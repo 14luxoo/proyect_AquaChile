@@ -1,12 +1,12 @@
-import FormularioSolicitud from './FormularioSolicitud'
-import './App.css'
+import FormularioSolicitud from './FormularioSolicitud';
+import './App.css';
 
-export default function App() {
+function App() {
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Sistema de Evaluación Psicolaboral</h1>
-      <hr />
+    <div className="App">
       <FormularioSolicitud />
     </div>
-  )
+  );
 }
+
+export default App;
