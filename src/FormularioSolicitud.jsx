@@ -24,10 +24,40 @@ export default function FormularioSolicitud() {
     }));
   };
 
-  const handleSubmit = (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log('Datos enviados:', formData);
-    alert('¡Solicitud enviada con éxito!');
+
+    // Crear FormData para enviar campos de texto y el archivo binario (CV) juntos
+    const data = new FormData();
+    data.append('nombreCandidato', formData.nombreCandidato);
+    data.append('familiaCargo', formData.familiaCargo);
+    data.append('nombreCargo', formData.nombreCargo);
+    data.append('cvFile', formData.cvFile);
+
+    try {
+      const response = await fetch('http://localhost:5000/api/solicitudes', {
+        method: 'POST',
+        body: data, // Enviamos el FormData directamente sin Headers de JSON
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        alert(result.mensaje);
+        
+        // Limpiar el formulario tras un envío exitoso
+        setFormData({
+          nombreCandidato: '',
+          familiaCargo: '',
+          nombreCargo: '',
+          cvFile: null,
+        });
+      } else {
+        alert('Hubo un error al procesar el envío.');
+      }
+    } catch (error) {
+      console.error('Error de conexión:', error);
+      alert('No se pudo conectar con el servidor (Asegúrate de que node server.js esté corriendo).');
+    }
   };
 
   return (
