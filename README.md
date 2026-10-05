@@ -6,20 +6,6 @@ El proyecto permite a los postulantes enviar su información y subir su CV a la 
 
 El repositorio está organizado en un monorepo que separa claramente la arquitectura del servidor (Backend) y la interfaz de usuario (Frontend):
 
-AquaChile/
-├── backend-AquaChile/      # Servidor Express / Node.js & Supabase API
-│   ├── server.js           # API REST (Autenticación JWT, Endpoints de postulaciones)
-│   ├── .env                # Variables de entorno (Supabase Keys, JWT Secret)
-│   └── package.json
-│
-├── frontend-AquaChile/     # Aplicación cliente en React (Vite)
-│   ├── src/                # Componentes (Login, Dashboard, Formulario)
-│   ├── index.html
-│   ├── vite.config.js
-│   └── package.json
-│
-└── README.md
-
 🚀 Instrucciones de Ejecución
 Para ejecutar el proyecto localmente, debes abrir dos terminales independientes:
 
