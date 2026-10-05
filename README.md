@@ -1,6 +1,45 @@
-Pasos para abrir pagina web
-1.Descargar archivos del github a pc Local
-2.Abrir terminal en tu IDE preferido
-3.Si estas en computador DUOC: npm install
-3.Colocar npm run dev
-4.Copiar el Localhost que te dio y pegarlo en el navegador
+Plataforma de Reclutamiento y Selección - AquaChile
+Sistema full-stack desarrollado para la gestión de postulaciones laborales, almacenamiento de curriculum vitae y administración de candidatos.
+
+🏗️ Sobre el Proyecto
+El proyecto permite a los postulantes enviar su información y subir su CV a la plataforma. Los reclutadores pueden autenticarse para acceder a un Dashboard administrativo donde visualizan todas las solicitudes registradas y descargan los documentos guardados en la base de datos.
+
+El repositorio está organizado en un monorepo que separa claramente la arquitectura del servidor (Backend) y la interfaz de usuario (Frontend):
+
+AquaChile/
+├── backend-AquaChile/      # Servidor Express / Node.js & Supabase API
+│   ├── server.js           # API REST (Autenticación JWT, Endpoints de postulaciones)
+│   ├── .env                # Variables de entorno (Supabase Keys, JWT Secret)
+│   └── package.json
+│
+├── frontend-AquaChile/     # Aplicación cliente en React (Vite)
+│   ├── src/                # Componentes (Login, Dashboard, Formulario)
+│   ├── index.html
+│   ├── vite.config.js
+│   └── package.json
+│
+└── README.md
+
+🚀 Instrucciones de Ejecución
+Para ejecutar el proyecto localmente, debes abrir dos terminales independientes:
+
+1. Levantar el Backend
+Abre una terminal y entra a la carpeta del servidor:
+cd backend-AquaChile
+
+Inicia el servidor:
+node server.js
+
+2. Levantar el Frontend
+Abre una segunda terminal y entra a la carpeta del cliente:
+cd frontend-AquaChile
+
+Inicia la aplicación React:
+npm run dev
+
+Accede en el navegador a http://localhost:5173
+
+🔐 Credenciales de Acceso
+Correo electrónico: admin@aquachile.cl
+
+Contraseña: 123
