@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
 import FormularioSolicitud from './FormularioSolicitud';
 import './App.css';
 
 function App() {
-  // Estados de vista: 'login' | 'admin' | 'postulante'
+  // Vistas: 'login' | 'admin' | 'postulante'
   const [currentView, setCurrentView] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
 
@@ -22,15 +22,19 @@ function App() {
   return (
     <>
       {currentView === 'login' && (
-        <Login onLoginSuccess={handleLoginSuccess} />
+        <Login
+          onLoginSuccess={handleLoginSuccess}
+          onEnterPostulante={() => setCurrentView('postulante')}
+        />
       )}
 
-      {currentView === 'admin' && (
+      {/* Solo se muestra si hay un usuario con sesión iniciada */}
+      {currentView === 'admin' && currentUser && (
         <AdminDashboard user={currentUser} onLogout={handleLogout} />
       )}
 
       {currentView === 'postulante' && (
-        <FormularioSolicitud onBackToLogin={() => setCurrentView('login')} />
+        <FormularioSolicitud onBack={() => setCurrentView('login')} />
       )}
     </>
   );

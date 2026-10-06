@@ -1,7 +1,48 @@
-html, body, #root {
+:root {
+  --navy: #0b2545;
+  --navy-2: #13315c;
+  --blue: #1d6fd8;
+  --blue-dark: #1558ad;
+  --blue-soft: #e8f0fb;
+  --ocean: #12476b;
+  --teal: #1a8fa0;
+  --bg: #f3f6fa;
+  --surface: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --success: #16794c;
+  --success-soft: #ecfdf3;
+  --radius: 12px;
+  --shadow: 0 10px 30px rgba(11, 37, 69, 0.08);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
   margin: 0;
   padding: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #f4f7f9;
+  min-height: 100vh;
+}
+
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, Roboto, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
 }
