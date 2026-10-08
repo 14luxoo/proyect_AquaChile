@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
+import FormularioSolicitud from './FormularioSolicitud';
 import { ESTADOS, ROLES, WEBHOOK_URL, permisosDe } from './config';
 import './App.css';
 
@@ -90,7 +91,7 @@ async function enviarAFlujo(solicitud) {
 }
 
 function App() {
-  // Vistas: 'login' | 'admin'
+  // Vistas: 'login' | 'admin' | 'postulante' (envío público, sin cuenta)
   const [currentView, setCurrentView] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
   const [usuarios, setUsuarios] = usePersistentState('aquachile_usuarios', USUARIOS_INICIALES);
@@ -125,10 +126,21 @@ function App() {
     return { ok: true };
   };
 
-  // Crea una solicitud a nombre del usuario con sesión (el analista solicitante).
+  // Crea una solicitud. Puede venir de un usuario con sesión (se toma su nombre y correo)
+  // o del formulario público sin cuenta (el solicitante escribe su nombre y correo).
   const handleNuevaSolicitud = async (datos) => {
-    if (!permisosDe(currentUser?.rol).crearSolicitud) {
+    // Con sesión iniciada se exige el permiso del rol; sin sesión es el envío público.
+    if (currentUser && !permisosDe(currentUser.rol).crearSolicitud) {
       return { ok: false, error: 'No tienes permisos para crear solicitudes.' };
+    }
+
+    const solicitante = currentUser ? currentUser.nombre : (datos.solicitanteNombre || '').trim();
+    const solicitanteEmail = currentUser
+      ? currentUser.email
+      : (datos.solicitanteEmail || '').trim().toLowerCase();
+
+    if (!solicitante || !solicitanteEmail) {
+      return { ok: false, error: 'Ingresa tu nombre y correo para enviar la solicitud.' };
     }
 
     const nueva = {
@@ -138,8 +150,8 @@ function App() {
       cargo: datos.nombreCargo.trim(),
       fecha: new Date().toISOString().slice(0, 10),
       estado: ESTADOS[0],
-      solicitante: currentUser.nombre,
-      solicitanteEmail: currentUser.email,
+      solicitante,
+      solicitanteEmail,
       cv: datos.cv || null, // { nombre, tipo, data (data URL) }
     };
 
@@ -178,7 +190,20 @@ function App() {
   return (
     <>
       {currentView === 'login' && (
-        <Login usuarios={usuarios} onLoginSuccess={handleLoginSuccess} />
+        <Login
+          usuarios={usuarios}
+          onLoginSuccess={handleLoginSuccess}
+          onEnterPostulante={() => setCurrentView('postulante')}
+        />
+      )}
+
+      {/* Envío rápido sin cuenta */}
+      {currentView === 'postulante' && (
+        <FormularioSolicitud
+          publico
+          onSubmitSolicitud={handleNuevaSolicitud}
+          onBack={() => setCurrentView('login')}
+        />
       )}
 
       {/* Solo se muestra si hay un usuario con sesión iniciada */}

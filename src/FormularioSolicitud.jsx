@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import logoAquaChile from './assets/AquaChile-Colour.png';
 import { FAMILIAS_CARGO } from './config';
 
 const MAX_CV_BYTES = 2 * 1024 * 1024; // 2 MB (el almacenamiento de la demo es limitado)
@@ -13,14 +14,18 @@ const leerComoDataUrl = (file) =>
   });
 
 const estadoInicial = {
+  solicitanteNombre: '',
+  solicitanteEmail: '',
   nombreCandidato: '',
   familiaCargo: '',
   nombreCargo: '',
   cvFile: null,
 };
 
-// Formulario de nueva solicitud. Se muestra dentro del panel, para usuarios con sesión.
-export default function FormularioSolicitud({ onSubmitSolicitud }) {
+// Formulario de solicitud. Dos modos:
+//  - dentro del panel (usuarios con sesión): se toma el solicitante de la sesión.
+//  - `publico`: página independiente, sin cuenta; el solicitante escribe su nombre y correo.
+export default function FormularioSolicitud({ onSubmitSolicitud, publico = false, onBack }) {
   const [formData, setFormData] = useState(estadoInicial);
   const [enviado, setEnviado] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -93,33 +98,58 @@ export default function FormularioSolicitud({ onSubmitSolicitud }) {
     }
   };
 
-  return (
+  const alertas = (
     <>
-      <header className="page-header">
-        <h1>Nueva solicitud de evaluación</h1>
-        <p className="muted">
-          Ingresa los datos del candidato para iniciar el proceso psicolaboral.
-        </p>
-      </header>
+      {enviado && (
+        <div className="alert alert-success" role="status">
+          ¡Solicitud enviada con éxito!
+        </div>
+      )}
+      {aviso && (
+        <div className="alert alert-warning" role="alert">
+          {aviso}
+        </div>
+      )}
+      {error && (
+        <div className="alert alert-error" role="alert">
+          {error}
+        </div>
+      )}
+    </>
+  );
 
-      <section className="card form-card solicitud-form-card">
-        {enviado && (
-          <div className="alert alert-success" role="status">
-            ¡Solicitud enviada con éxito!
-          </div>
-        )}
-        {aviso && (
-          <div className="alert alert-warning" role="alert">
-            {aviso}
-          </div>
-        )}
-        {error && (
-          <div className="alert alert-error" role="alert">
-            {error}
-          </div>
-        )}
-
+  const formulario = (
         <form onSubmit={handleSubmit} key={formKey}>
+          {publico && (
+            <>
+              <div className="field">
+                <label htmlFor="solicitanteNombre">Tu nombre</label>
+                <input
+                  id="solicitanteNombre"
+                  type="text"
+                  name="solicitanteNombre"
+                  value={formData.solicitanteNombre}
+                  onChange={handleInputChange}
+                  placeholder="Nombre de quien solicita"
+                  required
+                />
+              </div>
+
+              <div className="field">
+                <label htmlFor="solicitanteEmail">Tu correo</label>
+                <input
+                  id="solicitanteEmail"
+                  type="email"
+                  name="solicitanteEmail"
+                  value={formData.solicitanteEmail}
+                  onChange={handleInputChange}
+                  placeholder="nombre@aquachile.cl"
+                  required
+                />
+              </div>
+            </>
+          )}
+
           <div className="field">
             <label htmlFor="nombreCandidato">Nombre del candidato</label>
             <input
@@ -181,6 +211,50 @@ export default function FormularioSolicitud({ onSubmitSolicitud }) {
             {enviando ? 'Enviando…' : 'Enviar solicitud'}
           </button>
         </form>
+  );
+
+  // Modo público: página completa, sin panel ni cuenta.
+  if (publico) {
+    return (
+      <div className="form-page">
+        <div className="form-card-wrap">
+          {onBack && (
+            <button type="button" className="back-link" onClick={onBack}>
+              ← Volver al inicio
+            </button>
+          )}
+
+          <div className="card solicitud-card-form">
+            <div className="logo-crop logo-center">
+              <img src={logoAquaChile} alt="AquaChile" />
+            </div>
+
+            <h1>Solicitud de Evaluación Psicolaboral</h1>
+            <p className="muted center">
+              Ingresa los datos del candidato para iniciar el proceso
+            </p>
+
+            {alertas}
+            {formulario}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Modo panel: dentro del dashboard, con sesión iniciada.
+  return (
+    <>
+      <header className="page-header">
+        <h1>Nueva solicitud de evaluación</h1>
+        <p className="muted">
+          Ingresa los datos del candidato para iniciar el proceso psicolaboral.
+        </p>
+      </header>
+
+      <section className="card form-card solicitud-form-card">
+        {alertas}
+        {formulario}
       </section>
     </>
   );

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import logoAquaChile from '../assets/AquaChile-Colour.png';
 import HeroIlustracion from './HeroIlustracion';
 
-export default function Login({ usuarios, onLoginSuccess }) {
+export default function Login({ usuarios, onLoginSuccess, onEnterPostulante }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -99,6 +99,15 @@ export default function Login({ usuarios, onLoginSuccess }) {
               Ingresar
             </button>
           </form>
+
+          <div className="divider">
+            <span>o</span>
+          </div>
+
+          <button type="button" className="btn btn-blue" onClick={onEnterPostulante}>
+            Enviar solicitud sin cuenta
+          </button>
+          <p className="hint">Puedes enviar una solicitud rápida sin iniciar sesión.</p>
         </div>
       </section>
     </div>
