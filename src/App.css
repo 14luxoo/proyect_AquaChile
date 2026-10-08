@@ -200,6 +200,12 @@ h3 {
   border: 1px solid #abefc6;
 }
 
+.alert-warning {
+  background: #fffaeb;
+  color: #b54708;
+  border: 1px solid #fedf89;
+}
+
 /* =========================================================
    LOGIN
    ========================================================= */
@@ -479,7 +485,7 @@ h3 {
 /* Tarjetas de resumen */
 .stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 18px;
   margin-bottom: 24px;
 }
@@ -582,6 +588,16 @@ td.strong {
 .badge-rechazado {
   background: var(--danger-soft);
   color: var(--danger);
+}
+
+.badge-administrador {
+  background: var(--blue-soft);
+  color: var(--blue-dark);
+}
+
+.badge-reclutador {
+  background: var(--success-soft);
+  color: var(--success);
 }
 
 /* Crear usuario */
@@ -741,4 +757,63 @@ td.strong {
   .flota {
     animation: none;
   }
+}
+/* Descarga de CV */
+.btn-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border: 1px solid var(--blue-dark);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--blue-dark);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-download:hover {
+  background: var(--blue-soft);
+}
+
+.btn-download .icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* Estados, rol psicólogo y formulario dentro del panel */
+.badge-informe-enviado {
+  background: var(--success-soft);
+  color: var(--success);
+}
+
+.badge-psicologo {
+  background: #e6f6f8;
+  color: #0e6b78;
+}
+
+.estado-select {
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.estado-select:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.solicitud-form-card {
+  max-width: 640px;
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

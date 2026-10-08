@@ -2,12 +2,7 @@ import { useState } from 'react';
 import logoAquaChile from '../assets/AquaChile-Colour.png';
 import HeroIlustracion from './HeroIlustracion';
 
-// DEMO: reemplazar por la validación contra tu backend / base de datos.
-const USUARIOS_DEMO = [
-  { email: 'admin@aquachile.cl', password: 'admin123', nombre: 'Administrador' },
-];
-
-export default function Login({ onLoginSuccess, onEnterPostulante }) {
+export default function Login({ usuarios, onLoginSuccess }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -16,7 +11,8 @@ export default function Login({ onLoginSuccess, onEnterPostulante }) {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    const usuario = USUARIOS_DEMO.find(
+    // DEMO: reemplazar por la validación contra tu backend / base de datos.
+    const usuario = usuarios.find(
       (u) =>
         u.email.toLowerCase() === email.trim().toLowerCase() &&
         u.password === password
@@ -28,7 +24,7 @@ export default function Login({ onLoginSuccess, onEnterPostulante }) {
     }
 
     setError('');
-    onLoginSuccess({ email: usuario.email, nombre: usuario.nombre });
+    onLoginSuccess({ email: usuario.email, nombre: usuario.nombre, rol: usuario.rol });
   };
 
   return (
@@ -103,15 +99,6 @@ export default function Login({ onLoginSuccess, onEnterPostulante }) {
               Ingresar
             </button>
           </form>
-
-          <div className="divider">
-            <span>o</span>
-          </div>
-
-          <button type="button" className="btn btn-blue" onClick={onEnterPostulante}>
-            Entrar como postulante
-          </button>
-          <p className="hint">Los postulantes pueden enviar su solicitud sin iniciar sesión.</p>
         </div>
       </section>
     </div>
