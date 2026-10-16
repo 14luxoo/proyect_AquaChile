@@ -4,3 +4,4 @@ Pasos para abrir pagina web
 3.Si estas en computador DUOC: npm install
 3.Colocar npm run dev
 4.Copiar el Localhost que te dio y pegarlo en el navegador
+Set-ExecutionPolicy RemoteSigned -Scope Process
