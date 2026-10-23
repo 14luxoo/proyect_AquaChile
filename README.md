@@ -1,31 +1,58 @@
-Plataforma de Reclutamiento y Selección - AquaChile
-Sistema full-stack desarrollado para la gestión de postulaciones laborales, almacenamiento de curriculum vitae y administración de candidatos.
+🐟 Plataforma de Reclutamiento y Selección - AquaChile
+Sistema full-stack desarrollado para la gestión integral de postulaciones laborales, almacenamiento de curriculum vitae, administración de candidatos y trazabilidad de evaluaciones psicolaborales.
 
-🏗️ Sobre el Proyecto
-El proyecto permite a los postulantes enviar su información y subir su CV a la plataforma. Los reclutadores pueden autenticarse para acceder a un Dashboard administrativo donde visualizan todas las solicitudes registradas y descargan los documentos guardados en la base de datos.
+🏗️ Arquitectura del Proyecto
+El repositorio está organizado en una estructura monorepo que separa la lógica de negocio (Backend) de la interfaz gráfica (Frontend):
 
-El repositorio está organizado en un monorepo que separa claramente la arquitectura del servidor (Backend) y la interfaz de usuario (Frontend):
+proyect_AquaChile/
+├── backend-AquaChile/    # Servidor REST API (Node.js/Express + Supabase Client)
+└── frontend-AquaChile/   # Aplicación SPA (React + Vite)
+🛠️ Tech Stack
+Frontend: React, React Router DOM, Vite, CSS3.
+
+Backend: Node.js, Express.js.
+
+Base de Datos & Storage: Supabase (PostgreSQL) para la persistencia de usuarios, solicitudes e historial de cambios.
+
+Autenticación & Sesión: Login con persistencia local mediante localStorage.
+
+💡 Funcionalidades Principales
+Portal Público de Postulación (/postular):
+
+Formulario para candidatos con carga de CV y datos personales.
+
+Envío directo a la base de datos sin requerir autenticación.
+
+Panel Administrativo (/admin):
+
+Visualización del listado de postulantes y métricas generales.
+
+Gestión de estados de postulación (Pendiente, En Revisión, Aprobado, Rechazado).
+
+Módulo para creación e ingreso de nuevos usuarios administrativos.
+
+Sistema de Auditoría e Historial (historial_cambios):
+
+Trazabilidad automática de cambios de estado vinculando el identificador único (usuario_id) del reclutador que ejecuta la modificación.
 
 🚀 Instrucciones de Ejecución
-Para ejecutar el proyecto localmente, debes abrir dos terminales independientes:
+Para ejecutar la aplicación en entorno local, debes levantar el backend y frontend en terminales independientes:
 
 1. Levantar el Backend
-Abre una terminal y entra a la carpeta del servidor:
-cd backend-AquaChile
-
-Inicia el servidor:
-node server.js
+   Bash
+   cd backend-AquaChile
+   npm install
+   node server.js
+   El servidor escuchará por defecto en http://localhost:5000.
 
 2. Levantar el Frontend
-Abre una segunda terminal y entra a la carpeta del cliente:
-cd frontend-AquaChile
+   Bash
+   cd frontend-AquaChile
+   npm install
+   npm run dev
+   Accede desde tu navegador a: http://localhost:5173
 
-Inicia la aplicación React:
-npm run dev
-
-Accede en el navegador a http://localhost:5173
-
-🔐 Credenciales de Acceso
+🔐 Credenciales de Acceso (Entorno Local)
 Correo electrónico: admin@aquachile.cl
 
-Contraseña: 123
+Contraseña: 123456
