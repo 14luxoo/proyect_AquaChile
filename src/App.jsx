@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import Login from './components/Login';
 import AdminDashboard from './components/AdminDashboard';
-import FormularioSolicitud from './FormularioSolicitud';
-import { ESTADOS, ROLES, WEBHOOK_URL, permisosDe } from './config';
+import PostulacionPublica from './components/PostulacionPublica';
+import { ESTADOS, ESTADOS_ANTIGUOS, ROLES, RUTA_POSTULAR, WEBHOOK_URL, permisosDe } from './config';
 import './App.css';
 
 // DEMO: reemplazar por tu backend / base de datos.
@@ -35,11 +35,11 @@ const SOLICITUDES_INICIALES = [
 ];
 
 // Estado persistido en localStorage (solo para la demo, sin backend).
-function usePersistentState(key, initialValue) {
+function usePersistentState(key, initialValue, migrate = (v) => v) {
   const [value, setValue] = useState(() => {
     try {
       const saved = localStorage.getItem(key);
-      return saved ? JSON.parse(saved) : initialValue;
+      return saved ? migrate(JSON.parse(saved)) : initialValue;
     } catch {
       return initialValue;
     }
@@ -73,9 +73,11 @@ async function enviarAFlujo(solicitud) {
       }
     : null;
 
+  // Se envía como text/plain (el cuerpo sigue siendo JSON) para que el navegador no haga
+  // una consulta previa (preflight), que Google Apps Script no admite.
   const respuesta = await fetch(WEBHOOK_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({
       idSolicitud: solicitud.id,
       fecha: solicitud.fecha,
@@ -88,17 +90,37 @@ async function enviarAFlujo(solicitud) {
   });
 
   if (!respuesta.ok) throw new Error(`El flujo respondió ${respuesta.status}`);
+
+  // El script de Google Drive responde { ok: true | false, error }.
+  const resultado = await respuesta.json().catch(() => null);
+  if (resultado && resultado.ok === false) {
+    throw new Error(resultado.error || 'El flujo rechazó la solicitud.');
+  }
 }
 
+// Vista según la dirección: "#/postular" abre el formulario público; el resto, el login.
+const esRutaPublica = (hash) => hash.startsWith(RUTA_POSTULAR);
+
 function App() {
-  // Vistas: 'login' | 'admin' | 'postulante' (envío público, sin cuenta)
+  // Vistas con sesión: 'login' | 'admin'. Aparte existe la vista pública del formulario (#/postular).
   const [currentView, setCurrentView] = useState('login');
   const [currentUser, setCurrentUser] = useState(null);
+  const [hash, setHash] = useState(() => window.location.hash);
   const [usuarios, setUsuarios] = usePersistentState('aquachile_usuarios', USUARIOS_INICIALES);
   const [solicitudes, setSolicitudes] = usePersistentState(
     'aquachile_solicitudes',
-    SOLICITUDES_INICIALES
+    SOLICITUDES_INICIALES,
+    (lista) =>
+      lista.map((s) => (ESTADOS_ANTIGUOS[s.estado] ? { ...s, estado: ESTADOS_ANTIGUOS[s.estado] } : s))
   );
+  // Historial de cambios de estado: quién, cuándo y de qué estado a cuál.
+  const [historial, setHistorial] = usePersistentState('aquachile_historial', []);
+
+  useEffect(() => {
+    const alCambiarHash = () => setHash(window.location.hash);
+    window.addEventListener('hashchange', alCambiarHash);
+    return () => window.removeEventListener('hashchange', alCambiarHash);
+  }, []);
 
   const handleLoginSuccess = (userData) => {
     setCurrentUser(userData);
@@ -126,33 +148,24 @@ function App() {
     return { ok: true };
   };
 
-  // Crea una solicitud. Puede venir de un usuario con sesión (se toma su nombre y correo)
-  // o del formulario público sin cuenta (el solicitante escribe su nombre y correo).
+  // Crea una solicitud desde el formulario público (no requiere sesión).
   const handleNuevaSolicitud = async (datos) => {
-    // Con sesión iniciada se exige el permiso del rol; sin sesión es el envío público.
-    if (currentUser && !permisosDe(currentUser.rol).crearSolicitud) {
-      return { ok: false, error: 'No tienes permisos para crear solicitudes.' };
+    const cv = datos.cv || null; // { nombre, tipo, data (data URL) }
+    if (!cv || !cv.data?.startsWith('data:application/pdf')) {
+      return { ok: false, error: 'El currículum debe ser un archivo PDF.' };
     }
 
-    const solicitante = currentUser ? currentUser.nombre : (datos.solicitanteNombre || '').trim();
-    const solicitanteEmail = currentUser
-      ? currentUser.email
-      : (datos.solicitanteEmail || '').trim().toLowerCase();
-
-    if (!solicitante || !solicitanteEmail) {
-      return { ok: false, error: 'Ingresa tu nombre y correo para enviar la solicitud.' };
-    }
-
+    const id = Date.now();
     const nueva = {
-      id: Date.now(),
+      id,
       candidato: datos.nombreCandidato.trim(),
       familiaCargo: datos.familiaCargo,
       cargo: datos.nombreCargo.trim(),
       fecha: new Date().toISOString().slice(0, 10),
-      estado: ESTADOS[0],
-      solicitante,
-      solicitanteEmail,
-      cv: datos.cv || null, // { nombre, tipo, data (data URL) }
+      estado: ESTADOS[0], // siempre entra como "Pendiente"
+      solicitante: datos.solicitante.trim(),
+      solicitanteEmail: datos.solicitanteEmail.trim().toLowerCase(),
+      cv,
     };
 
     // Comprobamos que cabe en localStorage antes de aceptar la solicitud.
@@ -167,43 +180,54 @@ function App() {
 
     setSolicitudes((prev) => [...prev, nueva]);
 
-    // Si hay un flujo configurado, se le entrega la solicitud.
+    // Si hay un flujo configurado (Google Drive / Power Automate), se le entrega la solicitud.
     let aviso = '';
     if (WEBHOOK_URL) {
       try {
         await enviarAFlujo(nueva);
       } catch (err) {
         console.error(err);
-        aviso = 'La solicitud se guardó, pero no se pudo enviar al flujo de Power Automate.';
+        aviso = 'La solicitud se guardó, pero no se pudo enviar el currículum a la carpeta de solicitudes.';
       }
     }
 
-    return { ok: true, aviso };
+    return { ok: true, aviso, codigo: `AQ-${String(id).slice(-6)}` };
   };
 
-  // Solo roles con permiso (Administrador y Psicólogo) pueden avanzar el estado.
+  // Solo roles con permiso (Administrador y Psicólogo) pueden cambiar el estado.
+  // Cada cambio queda en el historial con el correo y el rol de quien lo hizo.
   const handleCambiarEstado = (id, estado) => {
     if (!permisosDe(currentUser?.rol).cambiarEstado || !ESTADOS.includes(estado)) return;
+
+    const solicitud = solicitudes.find((s) => s.id === id);
+    if (!solicitud || solicitud.estado === estado) return;
+
     setSolicitudes((prev) => prev.map((s) => (s.id === id ? { ...s, estado } : s)));
+    setHistorial((prev) => [
+      {
+        id: `${Date.now()}-${id}`,
+        solicitudId: id,
+        candidato: solicitud.candidato,
+        desde: solicitud.estado,
+        hacia: estado,
+        porNombre: currentUser.nombre,
+        porEmail: currentUser.email,
+        porRol: currentUser.rol,
+        fecha: new Date().toISOString(),
+      },
+      ...prev,
+    ]);
   };
+
+  // Vista pública: el formulario, sin login.
+  if (esRutaPublica(hash)) {
+    return <PostulacionPublica onNuevaSolicitud={handleNuevaSolicitud} />;
+  }
 
   return (
     <>
       {currentView === 'login' && (
-        <Login
-          usuarios={usuarios}
-          onLoginSuccess={handleLoginSuccess}
-          onEnterPostulante={() => setCurrentView('postulante')}
-        />
-      )}
-
-      {/* Envío rápido sin cuenta */}
-      {currentView === 'postulante' && (
-        <FormularioSolicitud
-          publico
-          onSubmitSolicitud={handleNuevaSolicitud}
-          onBack={() => setCurrentView('login')}
-        />
+        <Login usuarios={usuarios} onLoginSuccess={handleLoginSuccess} />
       )}
 
       {/* Solo se muestra si hay un usuario con sesión iniciada */}
@@ -212,8 +236,8 @@ function App() {
           user={currentUser}
           usuarios={usuarios}
           solicitudes={solicitudes}
+          historial={historial}
           onCreateUser={handleCreateUser}
-          onNuevaSolicitud={handleNuevaSolicitud}
           onCambiarEstado={handleCambiarEstado}
           onLogout={handleLogout}
         />

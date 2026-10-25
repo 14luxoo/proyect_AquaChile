@@ -1,9 +1,5 @@
 import { useState } from 'react';
-import logoAquaChile from './assets/AquaChile-Colour.png';
-import { FAMILIAS_CARGO } from './config';
-
-const MAX_CV_BYTES = 2 * 1024 * 1024; // 2 MB (el almacenamiento de la demo es limitado)
-const EXTENSIONES_VALIDAS = ['pdf', 'doc', 'docx'];
+import { FAMILIAS_CARGO, MAX_CV_BYTES } from './config';
 
 const leerComoDataUrl = (file) =>
   new Promise((resolve, reject) => {
@@ -13,8 +9,14 @@ const leerComoDataUrl = (file) =>
     reader.readAsDataURL(file);
   });
 
+// Un PDF real empieza con la firma "%PDF-". Así no basta con renombrar un .docx a .pdf.
+const esPdfReal = async (file) => {
+  const inicio = await file.slice(0, 5).text();
+  return inicio === '%PDF-';
+};
+
 const estadoInicial = {
-  solicitanteNombre: '',
+  solicitante: '',
   solicitanteEmail: '',
   nombreCandidato: '',
   familiaCargo: '',
@@ -22,12 +24,10 @@ const estadoInicial = {
   cvFile: null,
 };
 
-// Formulario de solicitud. Dos modos:
-//  - dentro del panel (usuarios con sesión): se toma el solicitante de la sesión.
-//  - `publico`: página independiente, sin cuenta; el solicitante escribe su nombre y correo.
-export default function FormularioSolicitud({ onSubmitSolicitud, publico = false, onBack }) {
+// Formulario de nueva solicitud. Es público: no requiere iniciar sesión.
+export default function FormularioSolicitud({ onSubmitSolicitud }) {
   const [formData, setFormData] = useState(estadoInicial);
-  const [enviado, setEnviado] = useState(false);
+  const [enviado, setEnviado] = useState(null); // { codigo } cuando se envió con éxito
   const [enviando, setEnviando] = useState(false);
   const [formKey, setFormKey] = useState(0); // permite limpiar el input de archivo
   const [error, setError] = useState('');
@@ -38,22 +38,28 @@ export default function FormularioSolicitud({ onSubmitSolicitud, publico = false
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0] || null;
+  const rechazarArchivo = (input, mensaje) => {
+    setError(mensaje);
+    input.value = '';
+    setFormData((prev) => ({ ...prev, cvFile: null }));
+  };
+
+  const handleFileChange = async (e) => {
+    const input = e.target;
+    const file = input.files[0] || null;
     setError('');
 
     if (file) {
-      const ext = file.name.split('.').pop().toLowerCase();
-      if (!EXTENSIONES_VALIDAS.includes(ext)) {
-        setError('El CV debe ser un archivo PDF o Word (.pdf, .doc, .docx).');
-        e.target.value = '';
-        setFormData((prev) => ({ ...prev, cvFile: null }));
+      if (!file.name.toLowerCase().endsWith('.pdf')) {
+        rechazarArchivo(input, 'El currículum debe ser un archivo PDF (.pdf). No se aceptan archivos Word.');
         return;
       }
       if (file.size > MAX_CV_BYTES) {
-        setError('El CV no puede superar los 2 MB.');
-        e.target.value = '';
-        setFormData((prev) => ({ ...prev, cvFile: null }));
+        rechazarArchivo(input, `El currículum no puede superar los ${MAX_CV_BYTES / 1024 / 1024} MB.`);
+        return;
+      }
+      if (!(await esPdfReal(file))) {
+        rechazarArchivo(input, 'El archivo no es un PDF válido. Expórtalo como PDF desde tu editor.');
         return;
       }
     }
@@ -65,21 +71,23 @@ export default function FormularioSolicitud({ onSubmitSolicitud, publico = false
     e.preventDefault();
     if (enviando) return;
 
+    if (!formData.cvFile) {
+      setError('Adjunta el currículum en formato PDF.');
+      return;
+    }
+
     setError('');
     setAviso('');
-    setEnviado(false);
+    setEnviado(null);
     setEnviando(true);
 
     try {
       // Convertimos el archivo a data URL para poder guardarlo y descargarlo después.
-      let cv = null;
-      if (formData.cvFile) {
-        cv = {
-          nombre: formData.cvFile.name,
-          tipo: formData.cvFile.type || 'application/octet-stream',
-          data: await leerComoDataUrl(formData.cvFile),
-        };
-      }
+      const cv = {
+        nombre: formData.cvFile.name,
+        tipo: 'application/pdf',
+        data: await leerComoDataUrl(formData.cvFile),
+      };
 
       const resultado = await onSubmitSolicitud?.({ ...formData, cv });
       if (resultado && !resultado.ok) {
@@ -88,7 +96,7 @@ export default function FormularioSolicitud({ onSubmitSolicitud, publico = false
       }
 
       setAviso(resultado?.aviso || '');
-      setEnviado(true);
+      setEnviado({ codigo: resultado?.codigo });
       setFormData(estadoInicial);
       setFormKey((k) => k + 1);
     } catch (err) {
@@ -98,58 +106,81 @@ export default function FormularioSolicitud({ onSubmitSolicitud, publico = false
     }
   };
 
-  const alertas = (
-    <>
-      {enviado && (
-        <div className="alert alert-success" role="status">
-          ¡Solicitud enviada con éxito!
+  if (enviado) {
+    return (
+      <section className="card solicitud-card-form confirmacion" role="status">
+        <div className="confirmacion-icono" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m5 12.5 4.5 4.5L19 7.5" />
+          </svg>
         </div>
-      )}
-      {aviso && (
-        <div className="alert alert-warning" role="alert">
-          {aviso}
-        </div>
-      )}
+        <h1>¡Solicitud enviada con éxito!</h1>
+        <p className="muted center">
+          Recibimos tu solicitud y el equipo de Reclutamiento y Selección la revisará.
+        </p>
+        {enviado.codigo && (
+          <p className="codigo-solicitud">
+            N.º de solicitud <strong>{enviado.codigo}</strong>
+          </p>
+        )}
+        {aviso && (
+          <div className="alert alert-warning" role="alert">
+            {aviso}
+          </div>
+        )}
+        <button type="button" className="btn btn-primary" onClick={() => setEnviado(null)}>
+          Enviar otra solicitud
+        </button>
+      </section>
+    );
+  }
+
+  return (
+    <section className="card solicitud-card-form">
+      <h1>Solicitud de evaluación psicolaboral</h1>
+      <p className="muted center">
+        Completa los datos del candidato y adjunta su currículum en PDF.
+      </p>
+
       {error && (
-        <div className="alert alert-error" role="alert">
+        <div className="alert alert-error" role="alert" style={{ marginTop: 18, marginBottom: 0 }}>
           {error}
         </div>
       )}
-    </>
-  );
 
-  const formulario = (
-        <form onSubmit={handleSubmit} key={formKey}>
-          {publico && (
-            <>
-              <div className="field">
-                <label htmlFor="solicitanteNombre">Tu nombre</label>
-                <input
-                  id="solicitanteNombre"
-                  type="text"
-                  name="solicitanteNombre"
-                  value={formData.solicitanteNombre}
-                  onChange={handleInputChange}
-                  placeholder="Nombre de quien solicita"
-                  required
-                />
-              </div>
+      <form onSubmit={handleSubmit} key={formKey}>
+        <fieldset className="form-grupo">
+          <legend>Quién solicita</legend>
+          <div className="field">
+            <label htmlFor="solicitante">Tu nombre</label>
+            <input
+              id="solicitante"
+              type="text"
+              name="solicitante"
+              value={formData.solicitante}
+              onChange={handleInputChange}
+              placeholder="Nombre y apellido"
+              autoComplete="name"
+              required
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="solicitanteEmail">Tu correo</label>
+            <input
+              id="solicitanteEmail"
+              type="email"
+              name="solicitanteEmail"
+              value={formData.solicitanteEmail}
+              onChange={handleInputChange}
+              placeholder="nombre@aquachile.cl"
+              autoComplete="email"
+              required
+            />
+          </div>
+        </fieldset>
 
-              <div className="field">
-                <label htmlFor="solicitanteEmail">Tu correo</label>
-                <input
-                  id="solicitanteEmail"
-                  type="email"
-                  name="solicitanteEmail"
-                  value={formData.solicitanteEmail}
-                  onChange={handleInputChange}
-                  placeholder="nombre@aquachile.cl"
-                  required
-                />
-              </div>
-            </>
-          )}
-
+        <fieldset className="form-grupo">
+          <legend>Datos del candidato</legend>
           <div className="field">
             <label htmlFor="nombreCandidato">Nombre del candidato</label>
             <input
@@ -197,65 +228,22 @@ export default function FormularioSolicitud({ onSubmitSolicitud, publico = false
           </div>
 
           <div className="field">
-            <label htmlFor="cvFile">Curriculum Vitae (PDF / Word)</label>
+            <label htmlFor="cvFile">Curriculum Vitae (solo PDF, máx. {MAX_CV_BYTES / 1024 / 1024} MB)</label>
             <input
               id="cvFile"
               type="file"
-              accept=".pdf,.doc,.docx"
+              accept=".pdf,application/pdf"
               onChange={handleFileChange}
               className="file-input"
+              required
             />
           </div>
+        </fieldset>
 
-          <button type="submit" className="btn btn-primary" disabled={enviando}>
-            {enviando ? 'Enviando…' : 'Enviar solicitud'}
-          </button>
-        </form>
-  );
-
-  // Modo público: página completa, sin panel ni cuenta.
-  if (publico) {
-    return (
-      <div className="form-page">
-        <div className="form-card-wrap">
-          {onBack && (
-            <button type="button" className="back-link" onClick={onBack}>
-              ← Volver al inicio
-            </button>
-          )}
-
-          <div className="card solicitud-card-form">
-            <div className="logo-crop logo-center">
-              <img src={logoAquaChile} alt="AquaChile" />
-            </div>
-
-            <h1>Solicitud de Evaluación Psicolaboral</h1>
-            <p className="muted center">
-              Ingresa los datos del candidato para iniciar el proceso
-            </p>
-
-            {alertas}
-            {formulario}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Modo panel: dentro del dashboard, con sesión iniciada.
-  return (
-    <>
-      <header className="page-header">
-        <h1>Nueva solicitud de evaluación</h1>
-        <p className="muted">
-          Ingresa los datos del candidato para iniciar el proceso psicolaboral.
-        </p>
-      </header>
-
-      <section className="card form-card solicitud-form-card">
-        {alertas}
-        {formulario}
-      </section>
-    </>
+        <button type="submit" className="btn btn-primary" disabled={enviando}>
+          {enviando ? 'Enviando…' : 'Enviar solicitud'}
+        </button>
+      </form>
+    </section>
   );
 }

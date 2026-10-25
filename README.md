@@ -1,7 +1,20 @@
-Pasos para abrir pagina web
-1.Descargar archivos del github a pc Local
-2.Abrir terminal en tu IDE preferido
-3.Si estas en computador DUOC: npm install
-3.Colocar npm run dev
-4.Copiar el Localhost que te dio y pegarlo en el navegador
-Set-ExecutionPolicy RemoteSigned -Scope Process
+# AquaChile · Portal de Gestión y Selección
+
+## Vistas
+
+| Dirección | Quién | Qué muestra |
+|---|---|---|
+| `/` | Equipo interno | Login y panel (solicitudes, historial, usuarios) |
+| `/#/postular` | Cualquiera, sin cuenta | Formulario de solicitud (solo CV en PDF) |
+
+## Comandos
+
+```
+npm install
+npm run dev
+npm run build
+```
+
+## Google Drive
+
+Ver `google-drive/GUIA-GOOGLE-DRIVE.md`.

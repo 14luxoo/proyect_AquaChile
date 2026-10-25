@@ -783,11 +783,6 @@ td.strong {
 }
 
 /* Estados, rol psicólogo y formulario dentro del panel */
-.badge-informe-enviado {
-  background: var(--success-soft);
-  color: var(--success);
-}
-
 .badge-psicologo {
   background: #e6f6f8;
   color: #0e6b78;
@@ -816,4 +811,241 @@ td.strong {
 .btn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+
+/* =========================================================
+   ESTADOS CON COLOR E ÍCONO
+   ========================================================= */
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px 4px 8px;
+  border: 1px solid transparent;
+}
+
+.icon-estado {
+  width: 16px;
+  height: 16px;
+  flex: none;
+}
+
+.badge-estado.badge-pendiente {
+  background: #fff4d6;
+  color: #92400e;
+  border-color: #fcd34d;
+}
+
+.badge-estado.badge-en-revision {
+  background: #dbeafe;
+  color: #1d4ed8;
+  border-color: #93c5fd;
+}
+
+.badge-estado.badge-aprobado {
+  background: #d1fae5;
+  color: #047857;
+  border-color: #6ee7b7;
+}
+
+.badge-estado.badge-rechazado {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+}
+
+.estado-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.estado-select {
+  padding: 5px 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+/* Tarjetas de resumen con el color de cada estado */
+.stats {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.stat-card {
+  border-top: 4px solid var(--border);
+}
+
+.stat-pendiente { border-top-color: #f59e0b; }
+.stat-en-revision { border-top-color: #3b82f6; }
+.stat-aprobado { border-top-color: #10b981; }
+.stat-rechazado { border-top-color: #ef4444; }
+
+.stat-pendiente strong { color: #b45309; }
+.stat-en-revision strong { color: #1d4ed8; }
+.stat-aprobado strong { color: #047857; }
+.stat-rechazado strong { color: #b91c1c; }
+
+/* Búsqueda y filtros */
+.filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.buscador {
+  flex: 1 1 260px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface);
+  font-size: 14px;
+  color: var(--text);
+}
+
+.buscador:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 7px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.chip:hover { background: #f1f5f9; }
+.chip:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+.chip.active { color: #fff; border-color: transparent; background: var(--navy); }
+.chip.active.chip-pendiente { background: #d97706; }
+.chip.active.chip-en-revision { background: #2563eb; }
+.chip.active.chip-aprobado { background: #059669; }
+.chip.active.chip-rechazado { background: #dc2626; }
+
+td.vacio {
+  text-align: center;
+  color: var(--muted);
+  padding: 36px 20px;
+  white-space: normal;
+}
+
+/* Historial */
+.page-header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cambio-estado {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.flecha {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.btn-download:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.badge-administrador { background: var(--blue-soft); color: var(--blue-dark); }
+
+.nav-item.copiar-enlace {
+  border: 1px dashed var(--border);
+}
+
+/* =========================================================
+   VISTA PÚBLICA DEL FORMULARIO
+   ========================================================= */
+.form-card-wrap .logo-center {
+  margin: 0 auto 22px;
+}
+
+.form-grupo {
+  margin: 22px 0 0;
+  padding: 0;
+  border: none;
+}
+
+.form-grupo legend {
+  padding: 0 0 10px;
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--teal);
+}
+
+.public-footer {
+  display: block;
+  margin-top: 22px;
+  text-align: center;
+  color: var(--muted);
+}
+
+.confirmacion {
+  text-align: center;
+}
+
+.confirmacion-icono {
+  width: 64px;
+  height: 64px;
+  margin: 0 auto 18px;
+  border-radius: 50%;
+  background: var(--success-soft);
+  color: var(--success);
+  display: grid;
+  place-items: center;
+}
+
+.confirmacion-icono svg {
+  width: 32px;
+  height: 32px;
+}
+
+.codigo-solicitud {
+  margin: 18px 0 8px;
+  color: var(--muted);
+}
+
+.codigo-solicitud strong {
+  color: var(--navy);
+  letter-spacing: 0.04em;
+}
+
+/* Ajustes de tamaño para que quepan 5 tarjetas y la columna de estado */
+.stats {
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.table-card thead th,
+.table-card tbody td {
+  padding-left: 14px;
+  padding-right: 14px;
+}
+
+.estado-cell {
+  flex-wrap: wrap;
+  gap: 6px 8px;
 }

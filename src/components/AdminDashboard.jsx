@@ -1,58 +1,79 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import logoAquaChile from '../assets/AquaChile-Colour.png';
-import FormularioSolicitud from '../FormularioSolicitud';
-import { ESTADOS, ROLES, permisosDe } from '../config';
-
-function Icon({ children }) {
-  return (
-    <svg
-      className="icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {children}
-    </svg>
-  );
-}
-
-const claseEstado = (estado) =>
-  estado
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, '-');
+import Icon from './Icon';
+import EstadoBadge from './EstadoBadge';
+import { claseEstado } from '../estados';
+import { ESTADOS, ROLES, RUTA_POSTULAR, permisosDe } from '../config';
 
 const descargarCv = (cv) => {
   if (!cv?.data) return;
   const enlace = document.createElement('a');
   enlace.href = cv.data;
-  enlace.download = cv.nombre || 'cv';
+  enlace.download = cv.nombre || 'cv.pdf';
   document.body.appendChild(enlace);
   enlace.click();
   enlace.remove();
 };
 
+const formatearFechaHora = (iso) =>
+  new Date(iso).toLocaleString('es-CL', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+// Evita que Excel interprete una celda como fórmula (=, +, -, @).
+const celdaCsv = (valor) => {
+  const texto = String(valor ?? '');
+  const seguro = /^[=+\-@]/.test(texto) ? `'${texto}` : texto;
+  return `"${seguro.replace(/"/g, '""')}"`;
+};
+
+const exportarHistorialCsv = (historial) => {
+  const filas = [
+    ['Fecha', 'Candidato', 'Estado anterior', 'Estado nuevo', 'Modificado por', 'Correo', 'Rol'],
+    ...historial.map((h) => [
+      formatearFechaHora(h.fecha), h.candidato, h.desde, h.hacia, h.porNombre, h.porEmail, h.porRol,
+    ]),
+  ];
+  const csv = '\uFEFF' + filas.map((f) => f.map(celdaCsv).join(';')).join('\r\n');
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  const enlace = document.createElement('a');
+  enlace.href = url;
+  enlace.download = `historial-aquachile-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(enlace);
+  enlace.click();
+  enlace.remove();
+  URL.revokeObjectURL(url);
+};
+
+const claseRol = (rol = '') =>
+  rol.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-');
+
+const enlaceFormulario = () =>
+  `${window.location.origin}${window.location.pathname}${RUTA_POSTULAR}`;
+
 export default function AdminDashboard({
   user,
   usuarios = [],
   solicitudes = [],
+  historial = [],
   onCreateUser,
-  onNuevaSolicitud,
   onCambiarEstado,
   onLogout,
 }) {
   // Lo que ve y puede hacer cada rol sale de la tabla PERMISOS (src/config.js).
-  const { crearUsuarios, crearSolicitud, cambiarEstado } = permisosDe(user?.rol);
+  const { crearUsuarios, cambiarEstado, verHistorial } = permisosDe(user?.rol);
 
-  // 'solicitudes' | 'nueva-solicitud' | 'crear-usuario'
+  // 'solicitudes' | 'historial' | 'crear-usuario'
   const [activeTab, setActiveTab] = useState('solicitudes');
   const [mensaje, setMensaje] = useState('');
   const [errorForm, setErrorForm] = useState('');
+  const [busqueda, setBusqueda] = useState('');
+  const [filtroEstado, setFiltroEstado] = useState('Todos');
+  const [enlaceCopiado, setEnlaceCopiado] = useState(false);
 
   const [newUser, setNewUser] = useState({
     nombre: '',
@@ -64,15 +85,35 @@ export default function AdminDashboard({
   // Aunque el estado interno diga otra cosa, nadie ve una pestaña que su rol no permite.
   const tabsPermitidas = [
     'solicitudes',
-    ...(crearSolicitud ? ['nueva-solicitud'] : []),
+    ...(verHistorial ? ['historial'] : []),
     ...(crearUsuarios ? ['crear-usuario'] : []),
   ];
   const tabVisible = tabsPermitidas.includes(activeTab) ? activeTab : 'solicitudes';
 
   const total = solicitudes.length;
-  const pendientes = solicitudes.filter((s) => s.estado === 'Pendiente').length;
-  const enRevision = solicitudes.filter((s) => s.estado === 'En Revisión').length;
-  const enviados = solicitudes.filter((s) => s.estado === 'Informe enviado').length;
+  const conteo = (estado) => solicitudes.filter((s) => s.estado === estado).length;
+
+  const solicitudesFiltradas = useMemo(() => {
+    const q = busqueda.trim().toLowerCase();
+    return solicitudes.filter(
+      (s) =>
+        (filtroEstado === 'Todos' || s.estado === filtroEstado) &&
+        (!q ||
+          [s.candidato, s.cargo, s.familiaCargo, s.solicitante]
+            .filter(Boolean)
+            .some((campo) => campo.toLowerCase().includes(q)))
+    );
+  }, [solicitudes, busqueda, filtroEstado]);
+
+  const copiarEnlace = async () => {
+    try {
+      await navigator.clipboard.writeText(enlaceFormulario());
+      setEnlaceCopiado(true);
+      setTimeout(() => setEnlaceCopiado(false), 2200);
+    } catch {
+      window.prompt('Copia este enlace:', enlaceFormulario());
+    }
+  };
 
   const cambiarTab = (tab) => {
     setActiveTab(tab);
@@ -117,17 +158,17 @@ export default function AdminDashboard({
             Solicitudes de postulantes
           </button>
 
-          {crearSolicitud && (
+          {verHistorial && (
             <button
               type="button"
-              className={`nav-item ${tabVisible === 'nueva-solicitud' ? 'active' : ''}`}
-              onClick={() => cambiarTab('nueva-solicitud')}
+              className={`nav-item ${tabVisible === 'historial' ? 'active' : ''}`}
+              onClick={() => cambiarTab('historial')}
             >
               <Icon>
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <path d="M14 2v6h6M12 18v-6M9 15h6" />
+                <path d="M3 12a9 9 0 1 0 3-6.7L3 8" />
+                <path d="M3 3v5h5M12 7v5l3 2" />
               </Icon>
-              Nueva solicitud
+              Historial de cambios
             </button>
           )}
 
@@ -148,6 +189,14 @@ export default function AdminDashboard({
         </nav>
 
         <div className="sidebar-footer">
+          <button type="button" className="nav-item copiar-enlace" onClick={copiarEnlace}>
+            <Icon>
+              <path d="M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7" />
+              <path d="M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7" />
+            </Icon>
+            {enlaceCopiado ? '¡Enlace copiado!' : 'Copiar enlace del formulario'}
+          </button>
+
           <div className="user-chip">
             <span className="avatar">{(user?.nombre || user?.email || 'U')[0].toUpperCase()}</span>
             <div className="user-info">
@@ -182,17 +231,37 @@ export default function AdminDashboard({
                 <span>Total de solicitudes</span>
                 <strong>{total}</strong>
               </div>
-              <div className="stat-card">
-                <span>Pendientes</span>
-                <strong>{pendientes}</strong>
-              </div>
-              <div className="stat-card">
-                <span>En revisión</span>
-                <strong>{enRevision}</strong>
-              </div>
-              <div className="stat-card">
-                <span>Informes enviados</span>
-                <strong>{enviados}</strong>
+              {ESTADOS.map((estado) => (
+                <div key={estado} className={`stat-card stat-${claseEstado(estado)}`}>
+                  <span>{estado}</span>
+                  <strong>{conteo(estado)}</strong>
+                </div>
+              ))}
+            </div>
+
+            <div className="filtros">
+              <input
+                type="search"
+                className="buscador"
+                placeholder="Buscar por candidato, cargo o solicitante…"
+                value={busqueda}
+                onChange={(e) => setBusqueda(e.target.value)}
+                aria-label="Buscar solicitudes"
+              />
+              <div className="chips" role="group" aria-label="Filtrar por estado">
+                {['Todos', ...ESTADOS].map((estado) => (
+                  <button
+                    key={estado}
+                    type="button"
+                    className={`chip ${filtroEstado === estado ? 'active' : ''} chip-${
+                      estado === 'Todos' ? 'todos' : claseEstado(estado)
+                    }`}
+                    onClick={() => setFiltroEstado(estado)}
+                    aria-pressed={filtroEstado === estado}
+                  >
+                    {estado}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -211,7 +280,7 @@ export default function AdminDashboard({
                     </tr>
                   </thead>
                   <tbody>
-                    {solicitudes.map((item) => (
+                    {solicitudesFiltradas.map((item) => (
                       <tr key={item.id}>
                         <td className="strong">{item.candidato}</td>
                         <td>{item.familiaCargo}</td>
@@ -219,24 +288,23 @@ export default function AdminDashboard({
                         <td>{item.solicitante || '—'}</td>
                         <td>{item.fecha}</td>
                         <td>
-                          {cambiarEstado ? (
-                            <select
-                              className="estado-select"
-                              value={item.estado}
-                              onChange={(e) => onCambiarEstado?.(item.id, e.target.value)}
-                              aria-label={`Estado de ${item.candidato}`}
-                            >
-                              {ESTADOS.map((estado) => (
-                                <option key={estado} value={estado}>
-                                  {estado}
-                                </option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className={`badge badge-${claseEstado(item.estado)}`}>
-                              {item.estado}
-                            </span>
-                          )}
+                          <div className="estado-cell">
+                            <EstadoBadge estado={item.estado} />
+                            {cambiarEstado && (
+                              <select
+                                className="estado-select"
+                                value={item.estado}
+                                onChange={(e) => onCambiarEstado?.(item.id, e.target.value)}
+                                aria-label={`Cambiar estado de ${item.candidato}`}
+                              >
+                                {ESTADOS.map((estado) => (
+                                  <option key={estado} value={estado}>
+                                    {estado}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
                         </td>
                         <td>
                           {item.cv ? (
@@ -258,6 +326,13 @@ export default function AdminDashboard({
                         </td>
                       </tr>
                     ))}
+                    {solicitudesFiltradas.length === 0 && (
+                      <tr>
+                        <td colSpan={7} className="vacio">
+                          No hay solicitudes que coincidan con el filtro.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -265,8 +340,73 @@ export default function AdminDashboard({
           </>
         )}
 
-        {crearSolicitud && tabVisible === 'nueva-solicitud' && (
-          <FormularioSolicitud onSubmitSolicitud={onNuevaSolicitud} />
+        {verHistorial && tabVisible === 'historial' && (
+          <>
+            <header className="page-header page-header-row">
+              <div>
+                <h1>Historial de cambios</h1>
+                <p className="muted">
+                  Registro de quién cambió el estado de cada solicitud, con su correo y rol.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-download"
+                onClick={() => exportarHistorialCsv(historial)}
+                disabled={historial.length === 0}
+              >
+                <Icon>
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <path d="M7 10l5 5 5-5M12 15V3" />
+                </Icon>
+                Exportar CSV
+              </button>
+            </header>
+
+            <section className="card table-card">
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Fecha y hora</th>
+                      <th>Candidato</th>
+                      <th>Cambio de estado</th>
+                      <th>Modificado por</th>
+                      <th>Correo</th>
+                      <th>Rol</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historial.map((h) => (
+                      <tr key={h.id}>
+                        <td>{formatearFechaHora(h.fecha)}</td>
+                        <td className="strong">{h.candidato}</td>
+                        <td>
+                          <div className="cambio-estado">
+                            <EstadoBadge estado={h.desde} />
+                            <span className="flecha" aria-label="a">→</span>
+                            <EstadoBadge estado={h.hacia} />
+                          </div>
+                        </td>
+                        <td>{h.porNombre}</td>
+                        <td>{h.porEmail}</td>
+                        <td>
+                          <span className={`badge badge-${claseRol(h.porRol)}`}>{h.porRol}</span>
+                        </td>
+                      </tr>
+                    ))}
+                    {historial.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="vacio">
+                          Aún no hay cambios de estado registrados.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          </>
         )}
 
         {crearUsuarios && tabVisible === 'crear-usuario' && (
@@ -359,7 +499,7 @@ export default function AdminDashboard({
                         <td className="strong">{u.nombre}</td>
                         <td>{u.email}</td>
                         <td>
-                          <span className={`badge badge-${claseEstado(u.rol)}`}>{u.rol}</span>
+                          <span className={`badge badge-${claseRol(u.rol)}`}>{u.rol}</span>
                         </td>
                       </tr>
                     ))}
