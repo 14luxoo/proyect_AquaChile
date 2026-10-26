@@ -1,20 +1,11 @@
-# AquaChile · Portal de Gestión y Selección
-
-## Vistas
-
-| Dirección | Quién | Qué muestra |
-|---|---|---|
-| `/` | Equipo interno | Login y panel (solicitudes, historial, usuarios) |
-| `/#/postular` | Cualquiera, sin cuenta | Formulario de solicitud (solo CV en PDF) |
+# AquaChile
+/#/postular
 
 ## Comandos
 
-```
 npm install
 npm run dev
 npm run build
-```
 
 ## Google Drive
-
-Ver `google-drive/GUIA-GOOGLE-DRIVE.md`.
+https://drive.google.com/drive/folders/1BjN6zhYgYgmI-Ov1l1pPZf0qIFNzYuQp
