@@ -16,6 +16,9 @@ import { createClient } from '@supabase/supabase-js';
 dotenv.config();
 
 const { SUPABASE_URL, SUPABASE_KEY, JWT_SECRET } = process.env;
+// Opcional: URL (termina en /exec) del script de Google Apps Script que guarda los CV en Drive.
+// Ver google-drive/GUIA-GOOGLE-DRIVE.md. Si está vacía, solo se usa Supabase.
+const GOOGLE_DRIVE_WEBHOOK_URL = (process.env.GOOGLE_DRIVE_WEBHOOK_URL || '').trim();
 
 if (!SUPABASE_URL || !SUPABASE_KEY || !JWT_SECRET) {
   console.error(
@@ -110,6 +113,46 @@ const solicitudLimiter = rateLimit({
 });
 
 // ==========================================
+// GOOGLE DRIVE: copia del CV en Drive (Apps Script)
+// ==========================================
+// Envía el CV a Google Drive. No lanza errores: devuelve { ok, error }.
+// Si falla, la solicitud igual queda guardada en Supabase.
+async function enviarCvADrive({ file, candidato, familiaCargo, cargo, idSolicitud }) {
+  if (!GOOGLE_DRIVE_WEBHOOK_URL || !file) return { ok: true, omitido: true };
+
+  try {
+    // text/plain evita el preflight CORS que Apps Script no soporta.
+    const respuesta = await fetch(GOOGLE_DRIVE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({
+        idSolicitud,
+        candidato,
+        familiaCargo,
+        cargo,
+        cv: {
+          nombre: file.originalname,
+          tipo: file.mimetype,
+          contenidoBase64: file.buffer.toString('base64'),
+        },
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+
+    if (!respuesta.ok) throw new Error(`Apps Script respondió ${respuesta.status}`);
+
+    const resultado = await respuesta.json().catch(() => null);
+    if (!resultado || resultado.ok === false) {
+      throw new Error(resultado?.error || 'Respuesta inválida de Apps Script.');
+    }
+    return { ok: true };
+  } catch (err) {
+    console.error('Error al guardar el CV en Google Drive:', err.message);
+    return { ok: false, error: err.message };
+  }
+}
+
+// ==========================================
 // 5. RUTAS PÚBLICAS
 // ==========================================
 
@@ -170,10 +213,21 @@ app.post(
 
       if (error) throw error;
 
+      const drive = await enviarCvADrive({
+        file,
+        candidato: String(nombreCandidato).trim(),
+        familiaCargo: String(familiaCargo).trim(),
+        cargo: String(nombreCargo).trim(),
+        idSolicitud: nuevaSolicitud?.id,
+      });
+
       return res.status(200).json({
         success: true,
         codigo: nuevaSolicitud?.id,
         message: 'Solicitud enviada con éxito',
+        aviso: drive.ok
+          ? ''
+          : 'La solicitud se guardó, pero no se pudo copiar el currículum a Google Drive.',
       });
     } catch (error) {
       console.error('Error al guardar solicitud:', error);
@@ -452,4 +506,4 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`Servidor backend corriendo en http://localhost:${PORT}`);
-});
+});
